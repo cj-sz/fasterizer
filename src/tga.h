@@ -20,3 +20,12 @@ struct TGAHeader {
     std::uint8_t img_descriptor = 0;
 };
 #pragma pack(pop)
+
+struct TGAColor {
+    std::uint8_t bgra[4] = {0,0,0,0};
+};
+
+constexpr TGAColor white = {255, 255, 255, 255};
+constexpr TGAColor blue = {255, 0, 0, 255};
+constexpr TGAColor green = {0, 255, 0, 255};
+constexpr TGAColor red = {0, 0, 255, 255};
