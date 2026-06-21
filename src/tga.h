@@ -29,3 +29,12 @@ constexpr TGAColor white = {255, 255, 255, 255};
 constexpr TGAColor blue = {255, 0, 0, 255};
 constexpr TGAColor green = {0, 255, 0, 255};
 constexpr TGAColor red = {0, 0, 255, 255};
+
+struct TGAImage {
+    int w, h;
+    std::vector<TGAColor> pixels;
+
+    TGAImage(int w, int h);
+    void set(int x, int y, TGAColor c);
+    bool write(const std::string& path) const;
+};
