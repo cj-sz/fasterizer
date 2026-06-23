@@ -37,4 +37,5 @@ struct TGAImage {
     TGAImage(int w, int h);
     void set(int x, int y, TGAColor c);
     bool write(const std::string& path) const;
+    void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img);
 };
