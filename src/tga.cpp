@@ -38,13 +38,3 @@ bool TGAImage::write(const std::string& path) const{
 
     return out.good();
 }
-
-// Draw a line of color c between two points using
-// the linear interpolation varying on t
-void TGAImage::draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
-    for (float t = 0; t <= 1; t += 0.2) {
-        int x = std::round(ax + (bx - ax)*t);
-        int y = std::round(ay + (by - ay)*t);
-        img.set(x, y, c);
-    }
-}
