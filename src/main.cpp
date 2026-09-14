@@ -34,13 +34,12 @@ float signed_triangle_area(vec2 a, vec2 b, vec2 c) {
 }
 
 // obtain the barycenter gammas for a point p within a triangle
-vec3 bary_gammas(vec2 a, vec2 b, vec2 c, vec2 p) {
+std::array<float,3> bary_gammas(float sabc, vec2 a, vec2 b, vec2 c, vec2 p) {
     // computing the gammas from the barycentric coordinate formula
-    float sabc = signed_triangle_area(a, b, c);
     float l1 = signed_triangle_area(p, b, c) / sabc;
     float l2 = signed_triangle_area(a, p, c) / sabc;
     float l3 = signed_triangle_area(a, b, p) / sabc;
-    return vec3{l1, l2, l3};
+    return std::array<float,3> {l1, l2, l3};
 }
 
 // draw a triangle given three sets of coordinates
@@ -52,9 +51,14 @@ void draw_triangle(vec2 a, vec2 b, vec2 c, TGAColor col, TGAImage &img){
     int bbmaxy = std::max(std::max(a.y, b.y), c.y);
     for (int x = bbminx; x <= bbmaxx; x++) {
         for (int y = bbminy; y <= bbmaxy; y++) {
+            // get the signed triangle area, skip if it is 0
+            float sabc = signed_triangle_area(a, b, c);
+            if (sabc == 0) continue;
+            // compute the barycentric coefficients for all points in the bounding
+            // box and draw with the provided color if they are within
             vec2 p = vec2{x, y};
-            vec3 gammas = bary_gammas(a, b, c, p);
-            if (gammas.x < 0 || gammas.y < 0 || gammas.z < 0) continue;
+            std::array<float,3> gammas = bary_gammas(sabc, a, b, c, p);
+            if (gammas[0] < 0 || gammas[1] < 0 || gammas[2] < 0) continue;
             img.set(x, y, col);
         }
     }
