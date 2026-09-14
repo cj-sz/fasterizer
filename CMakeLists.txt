@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_executable(fasterizer
     src/main.cpp
     src/tga.cpp
+    src/model.cpp
 )
 
 target_include_directories(fasterizer PRIVATE src)
