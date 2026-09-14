@@ -23,6 +23,7 @@ struct TGAHeader {
 
 struct TGAColor {
     std::uint8_t bgra[4] = {0,0,0,0};
+    std::uint8_t& operator[](const int i) { return bgra[i]; }
 };
 
 constexpr TGAColor white = {255, 255, 255, 255};
