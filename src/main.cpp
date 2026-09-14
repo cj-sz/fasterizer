@@ -28,6 +28,36 @@ void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
     }
 }
 
+float signed_triangle_area(vec2 a, vec2 b, vec2 c) {
+    return .5*((b.x-a.x)*(c.y-a.y)-(c.x-a.x)*(b.y-a.y));
+}
+
+// obtain the barycenter gammas for a point p within a triangle
+vec3 bary_gammas(vec2 a, vec2 b, vec2 c, vec2 p) {
+    float sabc = signed_triangle_area(a, b, c);
+    float l1 = signed_triangle_area(p, b, c) / sabc;
+    float l2 = signed_triangle_area(a, p, c) / sabc;
+    float l3 = signed_triangle_area(a, b, p) / sabc;
+    return vec3{l1, l2, l3};
+}
+
+// draw a triangle given three sets of coordinates
+void draw_triangle(vec2 a, vec2 b, vec2 c, TGAColor col, TGAImage &img){
+    // first find the bounding box for the triangle
+    int bbminx = std::min(std::min(a.x, b.x), c.x);
+    int bbminy = std::min(std::min(a.y, b.y), c.y);
+    int bbmaxx = std::max(std::max(a.x, b.x), c.x);
+    int bbmaxy = std::max(std::max(a.y, b.y), c.y);
+    for (int x = bbminx; x <= bbmaxx; x++) {
+        for (int y = bbminy; y <= bbmaxy; y++) {
+            vec2 p = vec2{x, y};
+            vec3 gammas = bary_gammas(a, b, c, p);
+            if (gammas.x < 0 || gammas.y < 0 || gammas.z < 0) continue;
+            img.set(x, y, col);
+        }
+    }
+}
+
 // projects the x, y coordinates of a vec3 onto a width and height
 std::pair<int, int> project(vec3 v, int w, int h) {
     // top left is origin so y needs to be flipped
@@ -37,6 +67,7 @@ std::pair<int, int> project(vec3 v, int w, int h) {
 }
 
 int main() {
+    // diablo pose
     int w = 800;
     int h = 800;
     TGAImage image(w, h);
@@ -60,5 +91,15 @@ int main() {
     }
 
     image.write("out.tga");
+
+    // some triangles
+    TGAImage image2(w, h);
+    vec2 a = vec2{100, 100};
+    vec2 b = vec2{250, 350};
+    vec2 c = vec2{90, 400};
+    draw_triangle(a, b, c, red, image2);
+
+    image2.write("out2.tga");
+
     return 0;
 }

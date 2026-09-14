@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 
 struct vec2 {
     float x, y;
@@ -40,5 +41,9 @@ struct vec3 {
 
     vec3 operator-() const {
         return vec3{-x, -y, -z};
+    }
+
+    float min() const {
+        return std::min(std::min(x, y), z);
     }
 };
