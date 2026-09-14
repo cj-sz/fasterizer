@@ -4,9 +4,24 @@
 // Draw a line of color c between two points using
 // the linear interpolation varying on t
 void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
-    for (float t = 0; t <= 1; t += 0.02) {
-        int x = std::round(ax + (bx - ax)*t);
+    // transpose the image when the lines are steep, so that we iterate
+    // across the y-axis instead of the x
+    bool steep = std::abs(ax-bx) < std::abs(ay-by);
+    if (steep) {
+        std::swap(ax, ay);
+        std::swap(bx, by);
+    }
+    // swap the order if ax > bx
+    if (ax > bx) {
+        std::swap(ax, bx);
+        std::swap(ay, by);
+    }
+    for (float x = ax; x < bx; x++) {
+        float t = (x-ax) / static_cast<float>(bx-ax);
         int y = std::round(ay + (by - ay)*t);
+        if (steep) {
+            img.set(y, x, c);
+        }
         img.set(x, y, c);
     }
 }
