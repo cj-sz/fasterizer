@@ -49,11 +49,11 @@ void draw_triangle(vec2 a, vec2 b, vec2 c, TGAColor col, TGAImage &img){
     int bbminy = std::min(std::min(a.y, b.y), c.y);
     int bbmaxx = std::max(std::max(a.x, b.x), c.x);
     int bbmaxy = std::max(std::max(a.y, b.y), c.y);
+    // compute signed triangle area and ensure nonzero
+    float sabc = signed_triangle_area(a, b, c);
+    if (sabc == 0) return;
     for (int x = bbminx; x <= bbmaxx; x++) {
         for (int y = bbminy; y <= bbmaxy; y++) {
-            // get the signed triangle area, skip if it is 0
-            float sabc = signed_triangle_area(a, b, c);
-            if (sabc == 0) continue;
             // compute the barycentric coefficients for all points in the bounding
             // box and draw with the provided color if they are within
             vec2 p = vec2{x, y};
@@ -65,11 +65,11 @@ void draw_triangle(vec2 a, vec2 b, vec2 c, TGAColor col, TGAImage &img){
 }
 
 // projects the x, y coordinates of a vec3 onto a width and height
-std::pair<int, int> project(vec3 v, int w, int h) {
+vec2 project(vec3 v, int w, int h) {
     // top left is origin so y needs to be flipped
-    int sx = static_cast<int>((v.x + 1.) * w / 2.);
-    int sy = static_cast<int>((1. - v.y) * h / 2.);
-    return {sx, sy};
+    float sx = ((v.x + 1.) * w / 2.);
+    float sy = ((1. - v.y) * h / 2.);
+    return vec2{sx, sy};
 }
 
 int main() {
@@ -87,16 +87,12 @@ int main() {
         vec3 v1 = m.vert(i, 1);
         vec3 v2 = m.vert(i, 2);
 
-        auto [x0, y0] = project(v0, w, h);
-        auto [x1, y1] = project(v1, w, h);
-        auto [x2, y2] = project(v2, w, h);
-
-        vec2 a = vec2{x0, y0};
-        vec2 b = vec2{x1, y1};
-        vec2 c = vec2{x2, y2};
+        vec2 a = project(v0, w, h);
+        vec2 b = project(v1, w, h);
+        vec2 c = project(v2, w, h);
 
         TGAColor rnd;
-        for (int c = 0; c < 3; c++) rnd[c] = std::rand()%255;
+        for (int j = 0; j < 3; j++) rnd[j] = std::rand()%256;
         rnd[3] = 255;
         draw_triangle(a, b, c, rnd, image);
     }
