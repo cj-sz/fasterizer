@@ -29,11 +29,13 @@ void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
 }
 
 float signed_triangle_area(vec2 a, vec2 b, vec2 c) {
+    // calculate signed area based on the determinant
     return .5*((b.x-a.x)*(c.y-a.y)-(c.x-a.x)*(b.y-a.y));
 }
 
 // obtain the barycenter gammas for a point p within a triangle
 vec3 bary_gammas(vec2 a, vec2 b, vec2 c, vec2 p) {
+    // computing the gammas from the barycentric coordinate formula
     float sabc = signed_triangle_area(a, b, c);
     float l1 = signed_triangle_area(p, b, c) / sabc;
     float l2 = signed_triangle_area(a, p, c) / sabc;
@@ -85,21 +87,17 @@ int main() {
         auto [x1, y1] = project(v1, w, h);
         auto [x2, y2] = project(v2, w, h);
 
-        draw_line(x0, y0, x1, y1, red, image);
-        draw_line(x1, y1, x2, y2, red, image);
-        draw_line(x2, y2, x0, y0, red, image);
+        vec2 a = vec2{x0, y0};
+        vec2 b = vec2{x1, y1};
+        vec2 c = vec2{x2, y2};
+
+        TGAColor rnd;
+        for (int c = 0; c < 3; c++) rnd[c] = std::rand()%255;
+        rnd[3] = 255;
+        draw_triangle(a, b, c, rnd, image);
     }
 
     image.write("out.tga");
-
-    // some triangles
-    TGAImage image2(w, h);
-    vec2 a = vec2{100, 100};
-    vec2 b = vec2{250, 350};
-    vec2 c = vec2{90, 400};
-    draw_triangle(a, b, c, red, image2);
-
-    image2.write("out2.tga");
 
     return 0;
 }
