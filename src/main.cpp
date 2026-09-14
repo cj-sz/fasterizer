@@ -1,4 +1,5 @@
 #include "tga.h"
+#include "model.h"
 #include <cmath>
 
 // Draw a line of color c between two points using
@@ -26,15 +27,36 @@ void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
     }
 }
 
-int main() {
-    TGAImage image(64, 64);
-    image.set(0, 0, red);
-    image.set(50, 10, green);
-    image.set(12, 48, blue);
+// projects the x, y coordinates of a vec3 onto a width and height
+std::pair<int, int> project(vec3 v, int w, int h) {
+    // top left is origin so y needs to be flipped
+    int sx = static_cast<int>((v.x + 1.) * w / 2.);
+    int sy = static_cast<int>((1. - v.y) * h / 2.);
+    return {sx, sy};
+}
 
-    draw_line(0, 0, 50, 10, red, image);
-    draw_line(50, 10, 12, 48, green, image);
-    draw_line(12, 48, 0, 0, blue, image);
+int main() {
+    int w = 800;
+    int h = 800;
+    TGAImage image(w, h);
+    Model m;
+    m.load("obj/diablo3_pose.obj");
+
+    // convert x and y values of vec3s to 800,800 mapping from each face
+    // and draw lines between them 
+    for (int i = 0; i < m.nfaces(); i++) {
+        vec3 v0 = m.vert(i, 0);
+        vec3 v1 = m.vert(i, 1);
+        vec3 v2 = m.vert(i, 2);
+
+        auto [x0, y0] = project(v0, w, h);
+        auto [x1, y1] = project(v1, w, h);
+        auto [x2, y2] = project(v2, w, h);
+
+        draw_line(x0, y0, x1, y1, red, image);
+        draw_line(x1, y1, x2, y2, red, image);
+        draw_line(x2, y2, x0, y0, red, image);
+    }
 
     image.write("out.tga");
     return 0;
