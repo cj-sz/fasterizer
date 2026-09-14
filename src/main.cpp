@@ -1,6 +1,8 @@
 #include "tga.h"
 #include "model.h"
 #include <cmath>
+#include <cstdlib>
+#include <ctime>
 
 // Draw a line of color c between two points using
 // the linear interpolation varying on t
@@ -73,6 +75,9 @@ vec2 project(vec3 v, int w, int h) {
 }
 
 int main() {
+    // random seed 
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
+
     // diablo pose
     int w = 800;
     int h = 800;
