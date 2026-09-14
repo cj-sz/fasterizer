@@ -22,8 +22,9 @@ void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &img) {
         int y = std::round(ay + (by - ay)*t);
         if (steep) {
             img.set(y, x, c);
+        } else {
+            img.set(x, y, c);
         }
-        img.set(x, y, c);
     }
 }
 
