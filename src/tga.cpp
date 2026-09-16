@@ -16,6 +16,11 @@ void TGAImage::set(int x, int y, TGAColor c) {
     pixels[y * w + x] = c;
 }
 
+TGAColor TGAImage::get(int x, int y) {
+    if (x >= w || y >= h || x < 0 || y < 0) return TGAColor{0,0,0,0};
+    return pixels[y * w + x];
+}
+
 bool TGAImage::write(const std::string& path) const{
     // Open a file stream w/o interpreting certain bit sequences
     std::ofstream out(path, std::ios::binary);
