@@ -8,4 +8,4 @@ run: all
 	./build/fasterizer
 
 clean:
-	rm -rf build out.tga
+	rm -rf build out.tga framebuf.tga zbuf.tga
