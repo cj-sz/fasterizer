@@ -71,12 +71,6 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
             float l2 = lambdas[1];
             float l3 = lambdas[2];
             if (l1 < 0 || l2 < 0 || l3 < 0) continue;
-            if (use_col){
-                framebuffer.set(x, y, col);
-            } else {
-                TGAColor color = TGAColor{l1 * 255, l2 * 255, l3 * 255, 255};
-                framebuffer.set(x, y, color);
-            }
             // formulate the z-buffer
             // right now the z-buffer is not a special grayscale object so we need
             // to check the  b value and see if this is greater; since all three
@@ -84,6 +78,12 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
             float z = l1 * a.z + l2 * b.z + l3 * c.z;
             if (z >= zbuffer.get(x, y)[0]) {
                 zbuffer.set(x, y, {z, z, z, 255});
+                if (use_col){
+                    framebuffer.set(x, y, col);
+                } else {
+                    TGAColor color = TGAColor{l1 * 255, l2 * 255, l3 * 255, 255};
+                    framebuffer.set(x, y, color);
+                }
             }
         }
     }
