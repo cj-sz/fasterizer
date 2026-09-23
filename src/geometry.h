@@ -23,6 +23,14 @@ struct vec2 {
     float dot(const vec2 &v) const {
         return x * v.x + y * v.y;
     }
+
+    float length() const {
+        return std::sqrt(dot(*this));
+    }
+
+    vec2 normalize() const {
+        return *this * (1.0f / length());
+    }
 };
 
 struct vec3 {
@@ -60,6 +68,14 @@ struct vec3 {
         float vy = z * b.x - x * b.z;
         float vz = x * b.y - y * b.x;
         return vec3{vx, vy, vz};
+    }
+
+    float length() const {
+        return std::sqrt(dot(*this));
+    }
+
+    vec3 normalize() const {
+        return *this * (1.0f / length());
     }
 };
 
