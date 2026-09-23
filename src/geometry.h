@@ -19,6 +19,10 @@ struct vec2 {
     vec2 operator-() const {
         return vec2{-x, -y};
     }
+
+    float dot(const vec2 &v) const {
+        return x * v.x + y * v.y;
+    }
 };
 
 struct vec3 {
@@ -45,5 +49,36 @@ struct vec3 {
 
     float min() const {
         return std::min(std::min(x, y), z);
+    }
+
+    float dot(const vec3 &v) const {
+        return x * v.x + y * v.y + z * v.z;
+    }
+
+    vec3 cross(const vec3 &b) const {
+        float vx = y * b.z - z * b.y;
+        float vy = z * b.x - x * b.z;
+        float vz = x * b.y - y * b.x;
+        return vec3{vx, vy, vz};
+    }
+};
+
+struct vec4 {
+    float a, b, c, d;
+
+    vec4 operator+(const vec4 &other) const {
+        return vec4{a + other.a, b + other.b, c + other.c, d + other.d};
+    }
+    vec4 operator-(const vec4 &other) const {
+        return vec4{a - other.a, b - other.b, c - other.c, d - other.d};
+    }
+    vec4 operator*(float f) const {
+        return vec4{a*f, b*f, c*f, d*f};
+    }
+    vec4 operator-() const {
+        return vec4{-a, -b, -c, -d};
+    }
+    float dot (const vec4 &v) const {
+        return a * v.a + b * v.b + c * v.c + d * v.d;
     }
 };
