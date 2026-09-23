@@ -98,3 +98,48 @@ struct vec4 {
         return x * v.x + y * v.y + z * v.z + w * v.w;
     }
 };
+
+template<int N> struct mat {
+    float m[N][N] = {}; //initialize all floats to 0 so no garbage
+
+    // mutable and immutable versions of quick-indexing
+    // no bounds checking so other code is responsible for this
+    float *operator[](int i) { return m[i]; }
+    const float *operator[](int i) const { return m[i]; }
+    
+    // static way to get an identity matrix of any size
+    static mat<N> identity() {
+        mat A; // all values defaulted to zero and n known because of static call
+        for (int i = 0; i < N; i++) {
+            A[i][i] = 1.0f;
+        }
+        return A;
+    }
+};
+
+// matmul overloads for vec2, vec3, vec4
+// inline means we just write the operation and the compiler type-checks
+// the left and right sides of it, and uses this if they match 
+// and that this function sits outside a struct
+// if we implemented these in a .cpp file we would declare a header here
+// without the inline modifier, and no variable names
+inline vec2 operator*(const mat<2> &A, const vec2 &v) {
+    return vec2{A[0][0] * v.x + A[0][1] * v.y, A[1][0] * v.x + A[1][1] * v.y};
+}
+
+inline vec3 operator*(const mat<3> &A, const vec3 &v) {
+    return vec3{
+        A[0][0] * v.x + A[0][1] * v.y + A[0][2] * v.z,
+        A[1][0] * v.x + A[1][1] * v.y + A[1][2] * v.z,
+        A[2][0] * v.x + A[2][1] * v.y + A[2][2] * v.z
+    };
+}
+
+inline vec4 operator*(const mat<4> &A, const vec4 &v) {
+    return vec4{
+        A[0][0] * v.x + A[0][1] * v.y + A[0][2] * v.z + A[0][3] * v.w,
+        A[1][0] * v.x + A[1][1] * v.y + A[1][2] * v.z + A[1][3] * v.w,
+        A[2][0] * v.x + A[2][1] * v.y + A[2][2] * v.z + A[2][3] * v.w,
+        A[3][0] * v.x + A[3][1] * v.y + A[3][2] * v.z + A[3][3] * v.w,
+    };
+}
