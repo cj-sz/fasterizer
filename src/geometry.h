@@ -64,21 +64,21 @@ struct vec3 {
 };
 
 struct vec4 {
-    float a, b, c, d;
+    float x, y, z, w;
 
     vec4 operator+(const vec4 &other) const {
-        return vec4{a + other.a, b + other.b, c + other.c, d + other.d};
+        return vec4{x + other.x, y + other.y, z + other.z, w + other.w};
     }
     vec4 operator-(const vec4 &other) const {
-        return vec4{a - other.a, b - other.b, c - other.c, d - other.d};
+        return vec4{x - other.x, y - other.y, z - other.z, w - other.w};
     }
     vec4 operator*(float f) const {
-        return vec4{a*f, b*f, c*f, d*f};
+        return vec4{x*f, y*f, z*f, w*f};
     }
     vec4 operator-() const {
-        return vec4{-a, -b, -c, -d};
+        return vec4{-x, -y, -z, -w};
     }
     float dot (const vec4 &v) const {
-        return a * v.a + b * v.b + c * v.c + d * v.d;
+        return x * v.x + y * v.y + z * v.z + w * v.w;
     }
 };
