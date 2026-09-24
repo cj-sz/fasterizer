@@ -1,5 +1,8 @@
 #pragma once
 #include <cmath>
+#include <optional>
+#include <utility>
+#include <algorithm>
 
 struct vec2 {
     float x, y;
@@ -114,6 +117,67 @@ template<int N> struct mat {
             A[i][i] = 1.0f;
         }
         return A;
+    }
+
+    // call transpose T; returns a new matrix
+    mat<N> T() const {
+        mat R;
+        // iterate over rows on outside
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j ++) {
+                T[j][i] = R[i][j];
+            }
+        }
+        return R;
+    }
+
+    // for inversion, gauss-jordan elimination
+    // optional because it is possible the matrix does not have an inverse
+    std::optional<mat<N>> inverse() const {
+        constexpr float epsilon = 1e-6f;
+        mat I = identity();
+        mat A = *this;
+        // iterate over the columns
+        for (int c = 0; c < N; c++) {
+            float max = 0.0f;
+            int max_row = -1;
+            // find the row r with the largest [r][c]
+            for (int r = c; r < N; r++) {
+                float cur = std::abs(A[r][c]);
+                if (cur > max) {
+                    max = cur;
+                    max_row = r;
+                }
+            }
+            // if this max is zero (with some float tolerance) we have no inverse
+            if (max <= epsilon) {
+                return std::nullopt;
+            }
+
+            // If we did find a suitable max, swap the rows in I and A:
+            std::swap(A.m[max_row], A.m[c]);
+            std::swap(I.m[max_row], I.m[c]);
+
+            float pivot = A[c][c];
+
+            // Normalize pivot row 
+            for (int i = 0; i < N; i++) {
+                A[c][i] /= pivot;
+                I[c][i] /= pivot;
+            }
+            
+            // Eliminate the column
+            for (int r = 0; r < N; r++) {
+                if (r == c) continue;
+                float f = A[r][c];
+                for (int col = 0; col < N; col++) {
+                    A[r][col] -= f * A[c][col];
+                    I[r][col] -= f * I[c][col];
+                }
+            }
+        }
+
+        return I;
     }
 };
 
