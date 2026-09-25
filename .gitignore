@@ -3,6 +3,9 @@ build/
 *.png
 compile_commands.json
 
+# windows to wsl artifacts
+*Zone.Identifier
+
 # editor/OS
 .vscode/
 .idea/
