@@ -1,1 +1,10 @@
 build/
+*.tga
+*.png
+compile_commands.json
+
+# editor/OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
