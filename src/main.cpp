@@ -35,6 +35,13 @@ float signed_triangle_area(vec3 a, vec3 b, vec3 c) {
     return .5*((b.x-a.x)*(c.y-a.y)-(c.x-a.x)*(b.y-a.y));
 }
 
+// rotate a point around the y-axis by pi/6 rad
+vec3 rot(vec3 v) {
+    float theta = M_PI/6;
+    mat<3> R = {{{std::cos(theta), 0, std::sin(theta)}, {0, 1, 0}, {-std::sin(theta), 0, std::cos(theta)}}};
+    return R * v;
+}
+
 // obtain the barycenter gammas for a point p within a triangle
 // note barycentric gammas ignore the z coordinate; this is the x,y projection center
 std::array<float,3> bary_gammas(float sabc, vec3 a, vec3 b, vec3 c, vec3 p) {
@@ -45,8 +52,14 @@ std::array<float,3> bary_gammas(float sabc, vec3 a, vec3 b, vec3 c, vec3 p) {
     return std::array<float,3> {l1, l2, l3};
 }
 
+// normalize f to the 
+float normalize(float f, float low_b, float up_b, float min, float max) {
+    return (f - min) / (max - min) * (up_b - low_b) + low_b;
+}
+
 // draw a triangle given three sets of coordinates
 // use a color if value passed in is true, otherwise use the rgb
+// normalizes for the zbuffer so that results fit into the [0,255] range
 void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage &framebuffer, TGAImage &zbuffer){
     // first find the bounding box for the triangle
     int bbminx = std::min(std::min(a.x, b.x), c.x);
@@ -59,6 +72,24 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
     // check the magnitude; veritces could designate a triangle that faces outward
     // but are listed in the opposite order s.t. the signed area would be negative
     if (std::abs(sabc) < 1) return;
+
+    float zmin = 100000;
+    float zmax = -100000;
+    // find min and max z
+    for (int x = bbminx; x <= bbmaxx; x++) {
+        for (int y = bbminy; y <= bbmaxy; y++) {
+            vec3 p = vec3{x, y, 0};
+            std::array<float,3> lambdas = bary_gammas(sabc, a, b, c, p);
+            float l1 = lambdas[0];
+            float l2 = lambdas[1];
+            float l3 = lambdas[2];
+            if (l1 < 0 || l2 < 0 || l3 < 0) continue;
+            float z = l1 * a.z + l2 * b.z + l3 * c.z;
+            if (z < zmin) zmin = z;
+            if (z > zmax) zmax = z;
+        }
+    }
+
 
     #pragma omp parallel for
     for (int x = bbminx; x <= bbmaxx; x++) {
@@ -76,8 +107,9 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
             // to check the  b value and see if this is greater; since all three
             // vals are the same this suffices
             float z = l1 * a.z + l2 * b.z + l3 * c.z;
-            if (z >= zbuffer.get(x, y)[0]) {
-                zbuffer.set(x, y, {z, z, z, 255});
+            float zn = normalize(z, 0, 255, zmin, zmax);
+            if (zn >= zbuffer.get(x, y)[0]) {
+                zbuffer.set(x, y, {zn, zn, zn, 255});
                 if (use_col){
                     framebuffer.set(x, y, col);
                 } else {
@@ -117,9 +149,9 @@ int main() {
         vec3 v1 = m.vert(i, 1);
         vec3 v2 = m.vert(i, 2);
 
-        vec3 a = project(v0, w, h);
-        vec3 b = project(v1, w, h);
-        vec3 c = project(v2, w, h);
+        vec3 a = project(rot(v0), w, h);
+        vec3 b = project(rot(v1), w, h);
+        vec3 c = project(rot(v2), w, h);
 
         TGAColor rnd;
         for (int j = 0; j < 3; j++) rnd[j] = std::rand()%256;
