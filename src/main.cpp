@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <limits>
+#include <vector>
 
 // Draw a line of color c between two points using
 // the linear interpolation varying on t
@@ -52,14 +54,9 @@ std::array<float,3> bary_gammas(float sabc, vec3 a, vec3 b, vec3 c, vec3 p) {
     return std::array<float,3> {l1, l2, l3};
 }
 
-// normalize f to the 
-float normalize(float f, float low_b, float up_b, float min, float max) {
-    return (f - min) / (max - min) * (up_b - low_b) + low_b;
-}
-
 // draw a triangle given three sets of coordinates
 // use a color if value passed in is true, otherwise use the rgb
-// normalizes for the zbuffer so that results fit into the [0,255] range
+// expects a.z/b.z/c.z to already be normalized into [0,255] by the caller
 void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage &framebuffer, TGAImage &zbuffer){
     // first find the bounding box for the triangle
     int bbminx = std::min(std::min(a.x, b.x), c.x);
@@ -72,24 +69,6 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
     // check the magnitude; veritces could designate a triangle that faces outward
     // but are listed in the opposite order s.t. the signed area would be negative
     if (std::abs(sabc) < 1) return;
-
-    float zmin = 100000;
-    float zmax = -100000;
-    // find min and max z
-    for (int x = bbminx; x <= bbmaxx; x++) {
-        for (int y = bbminy; y <= bbmaxy; y++) {
-            vec3 p = vec3{x, y, 0};
-            std::array<float,3> lambdas = bary_gammas(sabc, a, b, c, p);
-            float l1 = lambdas[0];
-            float l2 = lambdas[1];
-            float l3 = lambdas[2];
-            if (l1 < 0 || l2 < 0 || l3 < 0) continue;
-            float z = l1 * a.z + l2 * b.z + l3 * c.z;
-            if (z < zmin) zmin = z;
-            if (z > zmax) zmax = z;
-        }
-    }
-
 
     #pragma omp parallel for
     for (int x = bbminx; x <= bbmaxx; x++) {
@@ -107,9 +86,8 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
             // to check the  b value and see if this is greater; since all three
             // vals are the same this suffices
             float z = l1 * a.z + l2 * b.z + l3 * c.z;
-            float zn = normalize(z, 0, 255, zmin, zmax);
-            if (zn >= zbuffer.get(x, y)[0]) {
-                zbuffer.set(x, y, {zn, zn, zn, 255});
+            if (z >= zbuffer.get(x, y)[0]) {
+                zbuffer.set(x, y, {z, z, z, 255});
                 if (use_col){
                     framebuffer.set(x, y, col);
                 } else {
@@ -122,11 +100,12 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
 }
 
 // projects the x, y coordinates of a vec3 onto a width, height, and z-value for zbuffering
-vec3 project(vec3 v, int w, int h) {
+// normalizing to a range
+vec3 project(vec3 v, int w, int h, float zmin, float zmax) {
     // top left is origin so y needs to be flipped
     float sx = ((v.x + 1.) * w / 2.);
     float sy = ((1. - v.y) * h / 2.);
-    float sz = ((v.z + 1.) / 2. * 255.);
+    float sz = (v.z - zmin) / (zmax - zmin) * 255.;
     return vec3{sx, sy, sz};
 }
 
@@ -142,16 +121,25 @@ int main() {
     Model m;
     m.load("obj/diablo3_pose.obj");
 
-    // convert x and y values of vec3s to 800,800 mapping from each face
-    // and draw lines between them 
+    // rotate every face vertex once and track z bounds
+    std::vector<vec3> rotated(m.nfaces() * 3);
+    float zmin = std::numeric_limits<float>::infinity();
+    float zmax = -std::numeric_limits<float>::infinity();
     for (int i = 0; i < m.nfaces(); i++) {
-        vec3 v0 = m.vert(i, 0);
-        vec3 v1 = m.vert(i, 1);
-        vec3 v2 = m.vert(i, 2);
+        for (int j = 0; j < 3; j++) {
+            vec3 rv = rot(m.vert(i, j));
+            rotated[i * 3 + j] = rv;
+            if (rv.z < zmin) zmin = rv.z;
+            if (rv.z > zmax) zmax = rv.z;
+        }
+    }
 
-        vec3 a = project(rot(v0), w, h);
-        vec3 b = project(rot(v1), w, h);
-        vec3 c = project(rot(v2), w, h);
+    // pass 2: project each cached rotated vertex using the now-known
+    // zmin/zmax, and draw lines between them
+    for (int i = 0; i < m.nfaces(); i++) {
+        vec3 a = project(rotated[i * 3 + 0], w, h, zmin, zmax);
+        vec3 b = project(rotated[i * 3 + 1], w, h, zmin, zmax);
+        vec3 c = project(rotated[i * 3 + 2], w, h, zmin, zmax);
 
         TGAColor rnd;
         for (int j = 0; j < 3; j++) rnd[j] = std::rand()%256;
