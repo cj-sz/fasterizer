@@ -109,6 +109,22 @@ template<int N> struct mat {
     // no bounds checking so other code is responsible for this
     float *operator[](int i) { return m[i]; }
     const float *operator[](int i) const { return m[i]; }
+
+    mat<N> operator*(const mat<N> &other) const {
+        mat C; // all initialized to zero 
+        // i is row of A
+        // j is row of B
+        // k is col of C
+        // so that we do this in cache-optimized order
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                for (int k = 0; k < N; k++) {
+                    C[i][k] += m[i][k] * other.m[j][k];
+                }
+            }
+        }
+        return C;
+    }
     
     // static way to get an identity matrix of any size
     static mat<N> identity() {

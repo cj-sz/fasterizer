@@ -6,6 +6,30 @@
 #include <limits>
 #include <vector>
 
+mat<4> ModelView, Viewport, Perspective;
+
+// top-left corner of the viewport is defined by (x, y) and the size is
+// defined by (w, h)
+void viewport(const int x, const int y, const int w, const int h) {
+    Viewport = {{{w/2., 0, 0, x+w/2.}, {0, h/2., 0, y+h/2.}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
+}
+
+// perspective matrix for a canvas on the z-axis at a focal distance f
+void perspective(const double f) {
+    Perspective = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, -1/f, 1}}};
+}
+
+// model-view matrix for a given eye position, center of focus, and upward
+// direction
+void lookat(const vec3 eye, const vec3 center, const vec3 up) {
+    // define the coordinate vectors from the center
+    vec3 n = (eye - center).normalize();
+    vec3 l = up.cross(n).normalize();
+    vec3 m = n.cross(l).normalize();
+    ModelView = mat<4>{{{l.x, l.y, l.z, 0}, {m.x, m.y, m.z, 0}, {n.x, n.y, n.z, 0}, {0,0,0,1}}}
+        * mat<4>{{{1,0,0,-center.x}, {0, 1, 0, -center.y}, {0, 0, 1, -center.z}, {0, 0, 0, 1}}};
+}
+
 // Draw a line of color c between two points using
 // the linear interpolation varying on t
 void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &framebuffer) {
