@@ -100,11 +100,15 @@ void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage 
 }
 
 // projects the x, y coordinates of a vec3 onto a width, height, and z-value for zbuffering
-// normalizing to a range
-vec3 project(vec3 v, int w, int h, float zmin, float zmax) {
+// normalizing to a range, for a comera a dist c away from the z=0 plane which
+// is used as the canvas
+vec3 project(vec3 v, int w, int h, float c, float zmin, float zmax) {
+    // factor in the camera distance first 
+    float xp = v.x / (1 - v.z / c);
+    float yp = v.y / (1 - v.z / c);
     // top left is origin so y needs to be flipped
-    float sx = ((v.x + 1.) * w / 2.);
-    float sy = ((1. - v.y) * h / 2.);
+    float sx = ((xp + 1.) * w / 2.);
+    float sy = ((1. - yp) * h / 2.);
     float sz = (v.z - zmin) / (zmax - zmin) * 255.;
     return vec3{sx, sy, sz};
 }
@@ -116,6 +120,7 @@ int main() {
     // diablo pose
     int w = 800;
     int h = 800;
+    float cdist = 3;
     TGAImage framebuffer(w, h);
     TGAImage zbuffer(w, h);
     Model m;
@@ -134,12 +139,11 @@ int main() {
         }
     }
 
-    // pass 2: project each cached rotated vertex using the now-known
-    // zmin/zmax, and draw lines between them
+    // project each cached rotated vertex using the zmin/zmax and draw lines
     for (int i = 0; i < m.nfaces(); i++) {
-        vec3 a = project(rotated[i * 3 + 0], w, h, zmin, zmax);
-        vec3 b = project(rotated[i * 3 + 1], w, h, zmin, zmax);
-        vec3 c = project(rotated[i * 3 + 2], w, h, zmin, zmax);
+        vec3 a = project(rotated[i * 3 + 0], w, h, cdist, zmin, zmax);
+        vec3 b = project(rotated[i * 3 + 1], w, h, cdist, zmin, zmax);
+        vec3 c = project(rotated[i * 3 + 2], w, h, cdist, zmin, zmax);
 
         TGAColor rnd;
         for (int j = 0; j < 3; j++) rnd[j] = std::rand()%256;
