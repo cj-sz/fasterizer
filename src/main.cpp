@@ -15,7 +15,7 @@ void viewport(const int x, const int y, const int w, const int h) {
 }
 
 // perspective matrix for a canvas on the z-axis at a focal distance f
-void perspective(const double f) {
+void perspective(const float f) {
     Perspective = {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, -1/f, 1}}};
 }
 
@@ -30,86 +30,43 @@ void lookat(const vec3 eye, const vec3 center, const vec3 up) {
         * mat<4>{{{1,0,0,-center.x}, {0, 1, 0, -center.y}, {0, 0, 1, -center.z}, {0, 0, 0, 1}}};
 }
 
-// Draw a line of color c between two points using
-// the linear interpolation varying on t
-void draw_line(int ax, int ay, int bx, int by, TGAColor c, TGAImage &framebuffer) {
-    // transpose the image when the lines are steep, so that we iterate
-    // across the y-axis instead of the x
-    bool steep = std::abs(ax-bx) < std::abs(ay-by);
-    if (steep) {
-        std::swap(ax, ay);
-        std::swap(bx, by);
-    }
-    // swap the order if ax > bx
-    if (ax > bx) {
-        std::swap(ax, bx);
-        std::swap(ay, by);
-    }
-    for (float x = ax; x < bx; x++) {
-        float t = (x-ax) / static_cast<float>(bx-ax);
-        int y = std::round(ay + (by - ay)*t);
-        if (steep) {
-            framebuffer.set(y, x, c);
-        } else {
-            framebuffer.set(x, y, c);
-        }
-    }
-}
-
-float signed_triangle_area(vec3 a, vec3 b, vec3 c) {
-    // calculate signed area based on the determinant
-    return .5*((b.x-a.x)*(c.y-a.y)-(c.x-a.x)*(b.y-a.y));
-}
-
-// rotate a point around the y-axis by pi/6 rad
-vec3 rot(vec3 v) {
-    float theta = M_PI/6;
-    mat<3> R = {{{std::cos(theta), 0, std::sin(theta)}, {0, 1, 0}, {-std::sin(theta), 0, std::cos(theta)}}};
-    return R * v;
-}
-
-// obtain the barycenter gammas for a point p within a triangle
-// note barycentric gammas ignore the z coordinate; this is the x,y projection center
-std::array<float,3> bary_gammas(float sabc, vec3 a, vec3 b, vec3 c, vec3 p) {
-    // computing the gammas from the barycentric coordinate formula
-    float l1 = signed_triangle_area(p, b, c) / sabc;
-    float l2 = signed_triangle_area(a, p, c) / sabc;
-    float l3 = signed_triangle_area(a, b, p) / sabc;
-    return std::array<float,3> {l1, l2, l3};
-}
-
 // draw a triangle given three sets of coordinates
 // use a color if value passed in is true, otherwise use the rgb
 // expects a.z/b.z/c.z to already be normalized into [0,255] by the caller
-void draw_triangle(vec3 a, vec3 b, vec3 c, bool use_col, TGAColor col, TGAImage &framebuffer, TGAImage &zbuffer){
-    // first find the bounding box for the triangle
-    int bbminx = std::min(std::min(a.x, b.x), c.x);
-    int bbminy = std::min(std::min(a.y, b.y), c.y);
-    int bbmaxx = std::max(std::max(a.x, b.x), c.x);
-    int bbmaxy = std::max(std::max(a.y, b.y), c.y);
-    // compute signed triangle area and ensure nonzero
-    float sabc = signed_triangle_area(a, b, c);
+void draw_triangle(const vec4 clip[3], bool use_col, TGAColor col, TGAImage &framebuffer, TGAImage &zbuffer){
+    // ndc describes the normalized device coordinates, i.e. the perspective
+    // transformation (clip coordinates)
+    // the clip coordinates here are computed in the main loop
+    // and they are the result of Viewport * ModelView on each set of coordinates
+    // corresponding to a single triangle
+    vec4 ndc[3] = { clip[0]/clip[0].w, clip[1]/clip[1].w, clip[2]/clip[2].w };
+    vec2 screen[3] = { (Viewport*ndc[0]).xy(), (Viewport*ndc[1]).xy(), (Viewport*ndc[2]).xy() };
 
-    // check the magnitude; veritces could designate a triangle that faces outward
-    // but are listed in the opposite order s.t. the signed area would be negative
-    if (std::abs(sabc) < 1) return;
+    // build the triangle as a matrix
+    mat<3> ABC = {{ {screen[0].x, screen[0].y, 1.}, {screen[1].x, screen[1].y, 1.}, {screen[2].x, screen[2].y, 1.}}};
+    if (ABC.det()<1) return; // backface culling and triangles smaller than a pixel discarded under these circumstances
+
+    // efficiently get the upper left and bottom right corners for the bounding box
+    auto [bbminx, bbmaxx] = std::minmax({screen[0].x, screen[1].x, screen[2].x});
+    auto [bbminy, bbmaxy] = std::minmax({screen[0].y, screen[1].y, screen[2].y});
 
     #pragma omp parallel for
-    for (int x = bbminx; x <= bbmaxx; x++) {
-        for (int y = bbminy; y <= bbmaxy; y++) {
-            // compute the barycentric coefficients for all points in the bounding
-            // box and draw with the provided color if they are within
-            vec3 p = vec3{x, y, 0};
-            std::array<float,3> lambdas = bary_gammas(sabc, a, b, c, p);
-            float l1 = lambdas[0];
-            float l2 = lambdas[1];
-            float l3 = lambdas[2];
-            if (l1 < 0 || l2 < 0 || l3 < 0) continue;
+    // iterate over the bounding box clipped by what will be shown
+    for (int x = std::max<int>(bbminx, 0); x <= std::min<int>(bbmaxx, framebuffer.w - 1); x++) {
+        for (int y = std::max<int>(bbminy, 0); y <= std::min<int>(bbmaxx, framebuffer.h - 1); y++) {
+            // compute the barycentric coordinates for this x, y combination
+            // with respect to the current triangle (what is computed in ABC)
+            // -> is because inverse() returns an optional<> type
+            // we will never have an error on the optional<> type here because
+            // passing the determinant check earlier guarantees the matrix is
+            // invertible
+            vec3 bc = ABC.inverse()->T() * vec3 {static_cast<float>(x), static_cast<float>(y), 1.};
+            
+            // exit if this x,y is not inside the triangle
+            if (bc.x < 0 || bc.y < 0 || bc.z < 0) continue;
             // formulate the z-buffer
-            // right now the z-buffer is not a special grayscale object so we need
-            // to check the  b value and see if this is greater; since all three
-            // vals are the same this suffices
-            float z = l1 * a.z + l2 * b.z + l3 * c.z;
+            float z = bc.dot(vec3{ndc[0].z, ndc[1].z, ndc[2].z});
+
             if (z >= zbuffer.get(x, y)[0]) {
                 zbuffer.set(x, y, {z, z, z, 255});
                 if (use_col){
@@ -142,9 +99,18 @@ int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     // diablo pose
-    int w = 800;
-    int h = 800;
-    float cdist = 3;
+    constexpr int w = 800;
+    constexpr int h = 800;
+    constexpr vec3 eyepos{-1, 0, 2};
+    constexpr vec3 center{0,0,0};
+    constexpr vec3 up{0,1,0};
+
+    // initialize the static matrices based on the eye position, center, and up
+    // direction
+    lookat(eyepos, center, up);
+    perspective((eyepos-center).normalize());
+    viewport(w/16, h/16, w*7/8, h*7/8);
+
     TGAImage framebuffer(w, h);
     TGAImage zbuffer(w, h);
     Model m;
