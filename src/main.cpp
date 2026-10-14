@@ -93,6 +93,7 @@ int main() {
     viewport(w/16, h/16, w*7/8, h*7/8);
 
     TGAImage framebuffer(w, h);
+    TGAImage zbufferimage(w, h);
     std::vector<float> zbuffer(w * h, -std::numeric_limits<float>::infinity());
     Model m;
     m.load("obj/diablo3_pose.obj");
@@ -114,7 +115,32 @@ int main() {
     }
 
     framebuffer.write("framebuf.tga");
-    // zbuffer.write("zbuf.tga");
+    
+    // now to draw the zbuffer we first iterate over the zbuffer vector so we
+    // can get the min and max to normalize the values to [0, 255]
+    float zmin = std::numeric_limits<float>::infinity();
+    float zmax = -std::numeric_limits<float>::infinity();
+    for (int i = 0; i < w * h; i++) {
+        if (zbuffer[i] != -std::numeric_limits<float>::infinity()) {
+            if (zbuffer[i] < zmin) zmin = zbuffer[i];
+            if (zbuffer[i] > zmax) zmax = zbuffer[i];
+        }
+    }
+    // now normalize the values to the 0,255 range based on the found limits
+    // and for all zbuffer values of -inf make the pixel black
+    for (int x = 0; x < w; x ++) {
+        for (int y = 0; y < h; y++) {
+            float z = zbuffer[y * w + x];
+            if (z == -std::numeric_limits<float>::infinity()) {
+                zbufferimage.set(x, y, TGAColor{0,0,0,255});
+            } else {
+                float nc = (z - zmin) * 255 / (zmax - zmin);
+                zbufferimage.set(x, y, TGAColor{nc, nc, nc, 255});
+            }
+        }
+    }
+
+    zbufferimage.write("zbuf.tga");
 
     return 0;
 }
