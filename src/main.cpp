@@ -84,7 +84,7 @@ int main() {
     constexpr int h = 800;
     constexpr vec3 eyepos{-1, 0, 2};
     constexpr vec3 center{0,0,0};
-    constexpr vec3 up{0,1,0};
+    constexpr vec3 up{0,1,0}; // change to 0, 1, 0.8 to make him jojo pose
 
     // initialize the static matrices based on the eye position, center, and up
     // direction
