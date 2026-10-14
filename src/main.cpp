@@ -33,7 +33,7 @@ void lookat(const vec3 eye, const vec3 center, const vec3 up) {
 // draw a triangle given three sets of coordinates
 // use a color if value passed in is true, otherwise use the rgb
 // expects a.z/b.z/c.z to already be normalized into [0,255] by the caller
-void draw_triangle(const vec4 clip[3], bool use_col, TGAColor col, TGAImage &framebuffer, TGAImage &zbuffer){
+void rasterize(const vec4 clip[3], TGAColor col, TGAImage &framebuffer, std::vector<float> &zbuffer){
     // ndc describes the normalized device coordinates, i.e. the perspective
     // transformation (clip coordinates)
     // the clip coordinates here are computed in the main loop
@@ -53,7 +53,7 @@ void draw_triangle(const vec4 clip[3], bool use_col, TGAColor col, TGAImage &fra
     #pragma omp parallel for
     // iterate over the bounding box clipped by what will be shown
     for (int x = std::max<int>(bbminx, 0); x <= std::min<int>(bbmaxx, framebuffer.w - 1); x++) {
-        for (int y = std::max<int>(bbminy, 0); y <= std::min<int>(bbmaxx, framebuffer.h - 1); y++) {
+        for (int y = std::max<int>(bbminy, 0); y <= std::min<int>(bbmaxy, framebuffer.h - 1); y++) {
             // compute the barycentric coordinates for this x, y combination
             // with respect to the current triangle (what is computed in ABC)
             // -> is because inverse() returns an optional<> type
@@ -67,31 +67,12 @@ void draw_triangle(const vec4 clip[3], bool use_col, TGAColor col, TGAImage &fra
             // formulate the z-buffer
             float z = bc.dot(vec3{ndc[0].z, ndc[1].z, ndc[2].z});
 
-            if (z >= zbuffer.get(x, y)[0]) {
-                zbuffer.set(x, y, {z, z, z, 255});
-                if (use_col){
-                    framebuffer.set(x, y, col);
-                } else {
-                    TGAColor color = TGAColor{l1 * 255, l2 * 255, l3 * 255, 255};
-                    framebuffer.set(x, y, color);
-                }
+            if (z >= zbuffer[x + y * framebuffer.w]) {
+                zbuffer[x + y * framebuffer.w] = z;
+                framebuffer.set(x, y, col);
             }
         }
     }
-}
-
-// projects the x, y coordinates of a vec3 onto a width, height, and z-value for zbuffering
-// normalizing to a range, for a comera a dist c away from the z=0 plane which
-// is used as the canvas
-vec3 project(vec3 v, int w, int h, float c, float zmin, float zmax) {
-    // factor in the camera distance first 
-    float xp = v.x / (1 - v.z / c);
-    float yp = v.y / (1 - v.z / c);
-    // top left is origin so y needs to be flipped
-    float sx = ((xp + 1.) * w / 2.);
-    float sy = ((1. - yp) * h / 2.);
-    float sz = (v.z - zmin) / (zmax - zmin) * 255.;
-    return vec3{sx, sy, sz};
 }
 
 int main() {
@@ -108,41 +89,32 @@ int main() {
     // initialize the static matrices based on the eye position, center, and up
     // direction
     lookat(eyepos, center, up);
-    perspective((eyepos-center).normalize());
+    perspective((eyepos-center).length());
     viewport(w/16, h/16, w*7/8, h*7/8);
 
     TGAImage framebuffer(w, h);
-    TGAImage zbuffer(w, h);
+    std::vector<float> zbuffer(w * h, -std::numeric_limits<float>::infinity());
     Model m;
     m.load("obj/diablo3_pose.obj");
 
-    // rotate every face vertex once and track z bounds
-    std::vector<vec3> rotated(m.nfaces() * 3);
-    float zmin = std::numeric_limits<float>::infinity();
-    float zmax = -std::numeric_limits<float>::infinity();
-    for (int i = 0; i < m.nfaces(); i++) {
-        for (int j = 0; j < 3; j++) {
-            vec3 rv = rot(m.vert(i, j));
-            rotated[i * 3 + j] = rv;
-            if (rv.z < zmin) zmin = rv.z;
-            if (rv.z > zmax) zmax = rv.z;
-        }
-    }
-
     // project each cached rotated vertex using the zmin/zmax and draw lines
     for (int i = 0; i < m.nfaces(); i++) {
-        vec3 a = project(rotated[i * 3 + 0], w, h, cdist, zmin, zmax);
-        vec3 b = project(rotated[i * 3 + 1], w, h, cdist, zmin, zmax);
-        vec3 c = project(rotated[i * 3 + 2], w, h, cdist, zmin, zmax);
+        vec4 clip[3];
+        // build the primitive for the 3 vertices making up the face (triangle)
+        for (int d : {0, 1, 2}) {
+            vec3 v = m.vert(i, d);
+            // First three steps of the rasterization transformation
+            clip[d] = Perspective * ModelView * vec4{v.x, v.y, v.z, 1.};
+        }
 
         TGAColor rnd;
         for (int j = 0; j < 3; j++) rnd[j] = std::rand()%256;
         rnd[3] = 255;
-        draw_triangle(a, b, c, false, rnd, framebuffer, zbuffer);
+        rasterize(clip, rnd, framebuffer, zbuffer);
     }
 
     framebuffer.write("framebuf.tga");
-    zbuffer.write("zbuf.tga");
+    // zbuffer.write("zbuf.tga");
 
     return 0;
 }
