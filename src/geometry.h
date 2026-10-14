@@ -125,7 +125,7 @@ template<int N> struct mat {
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
                 for (int k = 0; k < N; k++) {
-                    C[i][k] += m[i][k] * other[j][k];
+                    C[i][k] += m[i][j] * other[j][k];
                 }
             }
         }
