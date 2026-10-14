@@ -30,9 +30,9 @@ void lookat(const vec3 eye, const vec3 center, const vec3 up) {
         * mat<4>{{{1,0,0,-center.x}, {0, 1, 0, -center.y}, {0, 0, 1, -center.z}, {0, 0, 0, 1}}};
 }
 
-// draw a triangle given three sets of coordinates
-// use a color if value passed in is true, otherwise use the rgb
-// expects a.z/b.z/c.z to already be normalized into [0,255] by the caller
+// rasterize a triangle to the given color, and write to the zbuffer for the
+// three coordinates making up that triangle, based on the provided clip
+// coordinates which need to be computed prior
 void rasterize(const vec4 clip[3], TGAColor col, TGAImage &framebuffer, std::vector<float> &zbuffer){
     // ndc describes the normalized device coordinates, i.e. the perspective
     // transformation (clip coordinates)
