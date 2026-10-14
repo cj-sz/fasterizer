@@ -13,7 +13,7 @@ TGAImage::TGAImage(int w, int h) {
 
 void TGAImage::set(int x, int y, TGAColor c) {
     if (x >= w || y >= h || x < 0 || y < 0) return;
-    pixels[y * w + x] = c;
+    pixels[(h - y - 1) * w + x] = c;
 }
 
 TGAColor TGAImage::get(int x, int y) {
