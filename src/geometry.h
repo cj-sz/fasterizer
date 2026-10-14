@@ -147,7 +147,7 @@ template<int N> struct mat {
         // iterate over rows on outside
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j ++) {
-                T[j][i] = R[i][j];
+                R[j][i] = m[i][j];
             }
         }
         return R;
