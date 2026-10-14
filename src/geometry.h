@@ -97,8 +97,14 @@ struct vec4 {
     vec4 operator-() const {
         return vec4{-x, -y, -z, -w};
     }
+    vec4 operator/(float f) const {
+        return vec4{x / f, y / f, z / f, w / f};
+    }
     float dot (const vec4 &v) const {
         return x * v.x + y * v.y + z * v.z + w * v.w;
+    }
+    vec2 xy () const {
+        return vec2 {x, y};
     }
 };
 
@@ -109,6 +115,22 @@ template<int N> struct mat {
     // no bounds checking so other code is responsible for this
     float *operator[](int i) { return m[i]; }
     const float *operator[](int i) const { return m[i]; }
+
+    mat<N> operator*(const mat<N> &other) const {
+        mat C; // all initialized to zero 
+        // i is row of A
+        // j is row of B
+        // k is col of C
+        // so that we do this in cache-optimized order
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                for (int k = 0; k < N; k++) {
+                    C[i][k] += m[i][j] * other[j][k];
+                }
+            }
+        }
+        return C;
+    }
     
     // static way to get an identity matrix of any size
     static mat<N> identity() {
@@ -125,7 +147,7 @@ template<int N> struct mat {
         // iterate over rows on outside
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j ++) {
-                T[j][i] = R[i][j];
+                R[j][i] = m[i][j];
             }
         }
         return R;
@@ -178,6 +200,30 @@ template<int N> struct mat {
         }
 
         return I;
+    }
+
+    float det() const {
+        // recursive cofactor expansion
+        // this constexpr is here so that only this return statement builds
+        // for the n=1 case otherwise the compiler builds forever
+        if constexpr (N==1) {
+            return m[0][0];
+        } else {
+            float d = 1.f;
+            for (int j = 0; j < N; j ++) {
+                // build the matrix that excludes row 0 and column j
+                mat<N-1> dmat;
+                for (int i = 1; i < N; i++) {
+                    for (int k = 0; k < N; k++) {
+                        if (k < j) dmat[i-1][k] = m[i][k];
+                        else if (k == j) continue;
+                        else dmat[i-1][k - 1] = m[i][k];
+                    }
+                }
+                d = d * std::pow(-1, j) * m[0][j] * dmat.det();
+            }
+            return d;
+        }
     }
 };
 
