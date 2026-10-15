@@ -11,6 +11,7 @@ add_executable(fasterizer
     src/main.cpp
     src/tga.cpp
     src/model.cpp
+    src/rasterizer.cpp
 )
 
 target_include_directories(fasterizer PRIVATE src)
