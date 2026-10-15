@@ -106,6 +106,9 @@ struct vec4 {
     vec2 xy () const {
         return vec2 {x, y};
     }
+    vec3 xyz() const {
+        return vec3 {x, y, z};
+    }
 };
 
 template<int N> struct mat {
